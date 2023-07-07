@@ -1,0 +1,13 @@
+[package]
+name = "sgfx"
+version = "0.0.0"
+description = "placeholder for my simple graphics engine"
+homepage = "https://github.com/swarnimarun/sgfx"
+repository = "https://github.com/swarnimarun/sgfx"
+documentation = "https://docs.rs/sgfx"
+edition = "2021"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
