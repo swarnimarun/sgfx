@@ -15,7 +15,7 @@ struct BoidsApp {
     frame_num: usize,
 }
 
-const NUM_PARTICLES: u32 = 2000;
+const NUM_PARTICLES: u32 = 4000;
 const PARTICLES_PER_GROUP: usize = 64;
 
 impl GfxApp for BoidsApp {
@@ -34,16 +34,16 @@ impl GfxApp for BoidsApp {
 
         // buffer for simulation parameters uniform
         let sim_param_data = [
-            0.04f32, // deltaT
-            0.1,     // rule1Distance
-            0.025,   // rule2Distance
-            0.025,   // rule3Distance
-            0.01,    // rule1Scale
-            0.02,    // rule2Scale
-            0.001,   // rule3Scale
+            0.08f32, // speed factor
+            0.41,    // separation
+            0.05,    // alignment
+            0.05,    // cohesion
+            0.01,    // influences of rule1
+            0.02,    // influences of rule2
+            0.001,   // influences of rule1
         ]
         .to_vec();
-        let sim_param_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let parameters = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Simulation Parameter Buffer"),
             contents: bytemuck::cast_slice(&sim_param_data),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -127,7 +127,7 @@ impl GfxApp for BoidsApp {
                 entry_point: "main_fs",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -146,7 +146,7 @@ impl GfxApp for BoidsApp {
         });
 
         // buffer for the three 2d triangle vertices of each instance
-        let vertex_buffer_data = [-0.01f32, -0.02, 0.01, -0.02, 0.00, 0.02];
+        let vertex_buffer_data = [-0.002f32, -0.004, 0.002, -0.004, 0.00, 0.004];
         let vertices_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::bytes_of(&vertex_buffer_data),
@@ -180,15 +180,13 @@ impl GfxApp for BoidsApp {
             );
         }
 
-        // create two bind groups, one for each buffer as the src
-        // where the alternate buffer is used as the dst
         for i in 0..2 {
             particle_bind_groups.push(device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &compute_bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: sim_param_buffer.as_entire_binding(),
+                        resource: parameters.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -258,9 +256,7 @@ impl GfxApp for BoidsApp {
             // render pass
             let mut rpass = command_encoder.begin_render_pass(&render_pass_descriptor);
             rpass.set_pipeline(&self.render_pipeline);
-            // render dst particles
             rpass.set_vertex_buffer(0, self.particle_buffers[(self.frame_num + 1) % 2].slice(..));
-            // the three instance-local vertices
             rpass.set_vertex_buffer(1, self.vertices_buffer.slice(..));
             rpass.draw(0..3, 0..NUM_PARTICLES);
         }
